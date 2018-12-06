@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">alien-tracker</string>
+    <string name="title_activity_alien_tracker">Map</string>
+</resources>
