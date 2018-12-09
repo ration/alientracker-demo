@@ -17,7 +17,8 @@ import alientracker.demo.api.Ufo
 
 
 class AlienSocketClient : AlienCoordinateProvider {
-    val subject: PublishSubject<AlienShip> = PublishSubject.create()
+    TODO
+  private  val subject: PublishSubject<AlienShip> = PublishSubject.create()
     val port = 9988
     val host = "10.0.2.2"
     var subscribe: Disposable? = null
