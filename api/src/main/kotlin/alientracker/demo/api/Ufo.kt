@@ -1,3 +1,3 @@
 package alientracker.demo.api
 
-data class Ufo(val id: Long, val coordinate: Pair<Double, Double>)
+data class Ufo(val id: Int, var coordinate: Pair<Double, Double>)

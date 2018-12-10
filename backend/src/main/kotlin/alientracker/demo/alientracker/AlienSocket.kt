@@ -16,24 +16,17 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Controller
 
 /**
-* RSocket endpoint for sightings
+ * RSocket endpoint for sightings
  */
 @Controller
 class SightingSocket(@Autowired private val sighting: Sighting) {
     private val LOG = LoggerFactory.getLogger(this.javaClass.name)
     private val port = 9988
     private val mapper = ObjectMapper()
+    private val closeable: Single<NettyContextCloseable> = initializeRSocket()
 
-    // Initializer for the RSocket. Incoming WebSocket requests are handled
-    // by this RSocket receiver and handled by the handler() method
-    // Uses Netty websocket transport
-    private val closeable: Single<NettyContextCloseable> = RSocketFactory
-        .receive()
-        .acceptor { { _, _ -> handler() } } // server handler RSocket
-        .transport(WebsocketServerTransport.create("localhost", port))
-        .start()
     init {
-        closeable.subscribe({
+         closeable.subscribe({
             LOG.info("subscribed = $it")
         }, {
             LOG.error("it = $it")
@@ -42,20 +35,27 @@ class SightingSocket(@Autowired private val sighting: Sighting) {
 
     /**
      * Handler for the socket. Connects the sightings to the RSocket
-     * and maps the items into JSON
+     * and maps the items into JSON. If we wanted different types of handlers, we could
+     * pass the acceptor lambda parameters here.
      */
     private fun handler(): Single<RSocket> {
-        LOG.info("Single just")
-
         return Single.just(object : AbstractRSocket() {
             // Here we could implement more of the API from AbstractSocket and provide e.g. single request/response
             // data. We want just a stream
             override fun requestStream(payload: Payload): Flowable<Payload> {
-                LOG.info("Client requested stream")
                 return sighting.sightings().observeOn(Schedulers.io()).map {
-                    DefaultPayload.text(mapper.writeValueAsString(it)) }
-                // TODO filter with payload
+                    DefaultPayload.text(mapper.writeValueAsString(it))
+                }
             }
         })
     }
+
+    /**
+     *  Initialize the RSocket listener with WebSocket as the Server transport and listen to port. Sets handler()
+     */
+    private fun initializeRSocket(): Single<NettyContextCloseable> = RSocketFactory
+        .receive()
+        .acceptor { { _, _ -> handler() } } // server handler RSocket
+        .transport(WebsocketServerTransport.create("localhost", port))
+        .start()
 }

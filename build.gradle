@@ -44,7 +44,7 @@ clean.doLast {
 }
 
 
-// Let's keep the android build separate from the submodule build. 
+// Let's keep the android build separate from the submodule build.
 task buildAndroid(type: Exec) {
     workingDir "android"
     commandLine "gradle", "build"
