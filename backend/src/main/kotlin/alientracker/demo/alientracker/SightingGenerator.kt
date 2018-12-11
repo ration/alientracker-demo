@@ -1,7 +1,12 @@
 package alientracker.demo.alientracker
 
 import alientracker.demo.api.Ufo
+import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
+import io.reactivex.Observable
+import io.reactivex.subjects.BehaviorSubject
+import io.reactivex.subjects.PublishSubject
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.TimeUnit
@@ -13,20 +18,34 @@ import java.util.concurrent.TimeUnit
  */
 @Component
 class SightingGenerator : Sighting {
+
+
+    private val LOG = LoggerFactory.getLogger(this.javaClass.name)
+
     private var shipCount = 100
+    private val source = PublishSubject.create<Ufo>()
     private val ships = mutableSetOf<Ufo>()
     private lateinit var iterator: MutableIterator<Ufo>
+    private var generationSpeed = 20L
+    private var tickerSubject = BehaviorSubject.createDefault<Long>(generationSpeed)
+
 
     init {
         generateUfos()
         iterator = ships.iterator()
+        createIntervalWithVariableTimer()
     }
 
 
     override fun sightings(): Flowable<Ufo> {
-        return Flowable.interval(20, TimeUnit.MILLISECONDS).map { nextUfo() }
+        return source.toFlowable(BackpressureStrategy.DROP).onBackpressureBuffer(100) {
+            LOG.info("Dropping elements tue to backpressure")
+        }
     }
 
+    override fun setSpeed(sightingsPerSecond: Int) {
+        generationSpeed = 1000/(sightingsPerSecond.toLong())
+    }
 
     private fun nextUfo(): Ufo {
         if (!iterator.hasNext()) {
@@ -48,5 +67,14 @@ class SightingGenerator : Sighting {
         repeat(shipCount) {
             ships.add(Ufo(it, Pair(40.7128, -74.0060)))
         }
+    }
+
+    private fun createIntervalWithVariableTimer() {
+        tickerSubject
+            .switchMap { Observable.interval(generationSpeed, TimeUnit.MILLISECONDS) }
+            .subscribe {
+                source.onNext(nextUfo())
+                tickerSubject.onNext(generationSpeed)
+            }
     }
 }

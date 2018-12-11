@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">alien-tracker</string>
     <string name="title_activity_alien_tracker">Ufo Tracker</string>
+    <string name="seekbar_text">Sightings per second: %d (actual: %d)"</string>
 </resources>

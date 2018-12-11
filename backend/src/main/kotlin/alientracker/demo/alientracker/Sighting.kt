@@ -8,4 +8,5 @@ import alientracker.demo.api.Ufo
  */
 interface Sighting {
     fun sightings(): Flowable<Ufo>
+    fun setSpeed(sightingsPerSecond: Int)
 }
