@@ -21,6 +21,8 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 import kotlinx.android.synthetic.main.activity_alien_tracker.*
+import java.time.Duration
+import java.time.Instant
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timerTask
@@ -117,18 +119,24 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
      * connect to the alien socket and subscribe to the alien tracking stream
      */
     private fun connectToAlienSocket() {
+        var counter = 0
+        var interval = Instant.now()
         disposable.add(tracker
             .track()
-            .timeInterval()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+            .doOnSubscribe{ interval = Instant.now() }
             .subscribe(
                 {
-                    val ufo = it.value()
-                    val marker = ufos.getOrPut(ufo.id) { createMarker(ufo) }
-                    marker.moveMarker(LatLng(ufo.coordinate.first, ufo.coordinate.second), false, mMap)
-                    sightingsPerSec = (1 / (it.time().toDouble() / 1000)).toLong()
-                    updateSeekBar()
+                    ++counter
+                    val marker = ufos.getOrPut(it.id) { createMarker(it) }
+                    marker.moveMarker(LatLng(it.coordinate.first, it.coordinate.second), false, mMap)
+                    if (Duration.between(interval, Instant.now()).seconds > 5) {
+                        sightingsPerSec = counter / 5L
+                        counter = 0
+                        interval = Instant.now()
+                        updateSeekBar()
+                    }
                 }, {
                     Log.e("aliens", "Failed ${it.message}", it)
                 }))

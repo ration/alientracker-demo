@@ -23,8 +23,8 @@ class UfoSocket : UfoCoordinateProvider {
 
     // Our development host
     private val port = 9988
-      private val host = "192.168.1.106"
-    //private val host = "10.0.2.2"
+    //  private val host = "192.168.1.106"
+    private val host = "10.0.2.2"
     private val mapper = ObjectMapper().registerModule(KotlinModule())
     private val socket: Single<RSocket> by lazy { initializeRSocket() }
 
@@ -52,7 +52,7 @@ class UfoSocket : UfoCoordinateProvider {
      */
     private fun requestShipStream(socket: RSocket): Flowable<Ufo> {
         return socket
-            .requestStream(DefaultPayload.EMPTY).onBackpressureDrop()
+            .requestStream(DefaultPayload.EMPTY)
             .map { mapper.readValue(it.dataUtf8, Ufo::class.java) }
     }
 

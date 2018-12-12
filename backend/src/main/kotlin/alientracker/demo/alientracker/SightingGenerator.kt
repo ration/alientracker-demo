@@ -38,9 +38,7 @@ class SightingGenerator : Sighting {
 
 
     override fun sightings(): Flowable<Ufo> {
-        return source.toFlowable(BackpressureStrategy.DROP).onBackpressureBuffer(100) {
-            LOG.info("Dropping elements tue to backpressure")
-        }
+        return source.toFlowable(BackpressureStrategy.DROP)
     }
 
     override fun setSpeed(sightingsPerSecond: Int) {
