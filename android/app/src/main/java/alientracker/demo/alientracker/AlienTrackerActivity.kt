@@ -15,17 +15,17 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.disposables.Disposable
+import io.reactivex.functions.BiFunction
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
+import io.reactivex.subjects.Subject
 import kotlinx.android.synthetic.main.activity_alien_tracker.*
 import java.time.Duration
 import java.time.Instant
-import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.concurrent.timerTask
 
 
 /**
@@ -37,7 +37,7 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var mMap: GoogleMap
     private val ufos = mutableMapOf<Int, Marker>()
     private lateinit var destroyer: Bitmap
-    private var disposable: CompositeDisposable = CompositeDisposable()
+    private var disposables: CompositeDisposable = CompositeDisposable()
 
     private var sightingsPerSec = 0L
     private val tracker = UfoSocket()
@@ -49,16 +49,13 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun initializeSpeedSettingSubject() {
-        disposable.add(speedSubject.filter { !settingSpeed }
+        disposables.add(speedSubject.filter { !settingSpeed }
             .debounce(1, TimeUnit.SECONDS)
-            .subscribe {
-                settingSpeed = true
+            .flatMap {
                 tracker.setSpeed(it)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribeOn(Schedulers.io()).subscribe {
-                        settingSpeed = false
-                    }
-            })
+                    .subscribeOn(Schedulers.io()).toObservable<Int>()
+            }
+            .subscribe())
     }
 
     private fun initDestroyer() {
@@ -85,7 +82,7 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onDestroy() {
         super.onDestroy()
-        disposable.clear()
+        disposables.clear()
     }
 
 
@@ -105,12 +102,11 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
 
-
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         // Center and zoom to New York
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(40.7128, -74.0060), 11.0f))
-
+        val newYork = LatLng(40.7128, -74.0060)
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(newYork, 11.0f))
         connectToAlienSocket()
     }
 
@@ -119,27 +115,33 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
      * connect to the alien socket and subscribe to the alien tracking stream
      */
     private fun connectToAlienSocket() {
-        var counter = 0
-        var interval = Instant.now()
-        disposable.add(tracker
-            .track()
-            .subscribeOn(Schedulers.io())
+        // Wrap the socket flowable into another subject to just count the emissions and count them
+        // We could do all kinds operators here as well to get the per/sec speed but let's keep it clean
+        val seekBarUpdater = Subject.create<Irrelevant> { seekBarUpdater ->
+            disposables.add(tracker.track()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { ufo ->
+                        val marker = ufos.getOrPut(ufo.id) { createMarker(ufo) }
+                        marker.moveMarker(LatLng(ufo.coordinate.first, ufo.coordinate.second), false, mMap)
+                        seekBarUpdater.onNext(Irrelevant.INSTANCE)
+                    }, {
+                        Log.e("aliens", "Failed ${it.message}", it)
+                    })
+            )
+        }
+        disposables.add(seekBarUpdater.buffer(5, TimeUnit.SECONDS)
             .observeOn(AndroidSchedulers.mainThread())
-            .doOnSubscribe{ interval = Instant.now() }
-            .subscribe(
-                {
-                    ++counter
-                    val marker = ufos.getOrPut(it.id) { createMarker(it) }
-                    marker.moveMarker(LatLng(it.coordinate.first, it.coordinate.second), false, mMap)
-                    if (Duration.between(interval, Instant.now()).seconds > 5) {
-                        sightingsPerSec = counter / 5L
-                        counter = 0
-                        interval = Instant.now()
-                        updateSeekBar()
-                    }
-                }, {
-                    Log.e("aliens", "Failed ${it.message}", it)
-                }))
+            .subscribe {
+                sightingsPerSec = (it.count() / 5).toLong()
+                updateSeekBar()
+            }
+        )
+    }
+
+    private enum class Irrelevant {
+        INSTANCE
     }
 
     private fun updateSeekBar() {

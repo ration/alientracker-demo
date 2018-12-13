@@ -13,22 +13,16 @@ import java.util.concurrent.TimeUnit
 
 
 /**
- * Our fake sighting generator. Generates 100 ufos descending upon New York and they
- * are sighted every 20 ms (so each ufo moves every 2s)
+ * Our fake sighting generator. Generates 100 ufos descending upon New York. Variable speed.
  */
 @Component
 class SightingGenerator : Sighting {
-
-
-    private val LOG = LoggerFactory.getLogger(this.javaClass.name)
-
     private var shipCount = 100
     private val source = PublishSubject.create<Ufo>()
     private val ships = mutableSetOf<Ufo>()
     private lateinit var iterator: MutableIterator<Ufo>
     private var generationSpeed = 20L
     private var tickerSubject = BehaviorSubject.createDefault<Long>(generationSpeed)
-
 
     init {
         generateUfos()

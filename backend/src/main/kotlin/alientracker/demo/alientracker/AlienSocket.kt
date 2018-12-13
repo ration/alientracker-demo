@@ -44,7 +44,7 @@ class SightingSocket(@Autowired private val sighting: Sighting) {
     private fun handler(): Single<RSocket> {
         return Single.just(object : AbstractRSocket() {
             // Here we could implement more of the API from AbstractSocket and provide e.g. single request/response
-            // data. We want just a stream
+            // data. We want just a stream and a single fire and forget without paying attention to the payload
 
             override fun requestStream(payload: Payload): Flowable<Payload> {
                 return sighting.sightings().observeOn(Schedulers.io())

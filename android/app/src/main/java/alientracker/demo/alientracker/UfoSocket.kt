@@ -19,11 +19,8 @@ import okhttp3.HttpUrl
  * The WebSocket connection to the back end ufo with RSockets.
  */
 class UfoSocket : UfoCoordinateProvider {
-
-
-    // Our development host
+    // Our development host (from the emulator)
     private val port = 9988
-    //  private val host = "192.168.1.106"
     private val host = "10.0.2.2"
     private val mapper = ObjectMapper().registerModule(KotlinModule())
     private val socket: Single<RSocket> by lazy { initializeRSocket() }
@@ -59,7 +56,7 @@ class UfoSocket : UfoCoordinateProvider {
 
     /**
      * Initialize the socket connection
-     *  We should also do better error handling on it here.
+     * We should also do better error handling on it here.
      */
     private fun initializeRSocket(): Single<RSocket> {
         return RSocketFactory

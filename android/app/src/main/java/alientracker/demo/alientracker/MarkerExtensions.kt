@@ -20,7 +20,7 @@ fun Marker.moveMarker(
     val proj = mGoogleMapObject.projection
     val startPoint = proj.toScreenLocation(this.position)
     val startLatLng = proj.fromScreenLocation(startPoint)
-    val duration: Long = 500
+    val duration: Long = 200
 
     val interpolator = LinearInterpolator()
 
@@ -34,7 +34,7 @@ fun Marker.moveMarker(
 
             if (t < 1.0) {
                 // Post again 16ms later.
-                handler.postDelayed(this, 16)
+                    handler.postDelayed(this, 16)
             } else {
                 this@moveMarker.isVisible = !hideMarker
             }
