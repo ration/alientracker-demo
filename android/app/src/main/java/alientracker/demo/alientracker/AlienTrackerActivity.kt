@@ -25,6 +25,8 @@ import io.reactivex.subjects.Subject
 import kotlinx.android.synthetic.main.activity_alien_tracker.*
 import java.time.Duration
 import java.time.Instant
+import java.util.*
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 
@@ -43,6 +45,7 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
     private val tracker = UfoSocket()
     private var settingSpeed = false
     private val speedSubject: BehaviorSubject<Int> = BehaviorSubject.create()
+    private var slider = 10
 
     init {
         initializeSpeedSettingSubject()
@@ -87,13 +90,14 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
 
 
     private fun setupSeekBar() {
+        seekBar.progress = 1
         updateSeekBar()
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
 
             override fun onProgressChanged(seekBar: SeekBar, i: Int, b: Boolean) {
-                seekBarText.text = getString(R.string.seekbar_text, i, sightingsPerSec)
-
-                speedSubject.onNext(i)
+                slider = i * 10 + 1
+                updateSeekBar()
+                speedSubject.onNext(slider)
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
@@ -120,12 +124,14 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
         val seekBarUpdater = Subject.create<Irrelevant> { seekBarUpdater ->
             disposables.add(tracker.track()
                 .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
+                .observeOn(Schedulers.io())
                 .subscribe(
                     { ufo ->
-                        val marker = ufos.getOrPut(ufo.id) { createMarker(ufo) }
-                        marker.moveMarker(LatLng(ufo.coordinate.first, ufo.coordinate.second), false, mMap)
-                        seekBarUpdater.onNext(Irrelevant.INSTANCE)
+                        doAndWaitOnUiThread {
+                            val marker = ufos.getOrPut(ufo.id) { createMarker(ufo) }
+                            marker.moveMarker(LatLng(ufo.coordinate.first, ufo.coordinate.second), false, mMap)
+                            seekBarUpdater.onNext(Irrelevant.INSTANCE)
+                        }
                     }, {
                         Log.e("aliens", "Failed ${it.message}", it)
                     })
@@ -140,12 +146,21 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
         )
     }
 
+    private fun doAndWaitOnUiThread(f: () -> Unit) {
+        val latch = CountDownLatch(1)
+        runOnUiThread {
+            f.invoke()
+            latch.countDown()
+        }
+        latch.await()
+    }
+
     private enum class Irrelevant {
         INSTANCE
     }
 
     private fun updateSeekBar() {
-        seekBarText.text = getString(R.string.seekbar_text, seekBar.progress, sightingsPerSec)
+        seekBarText.text = getString(R.string.seekbar_text, slider, sightingsPerSec)
     }
 
     private fun createMarker(ufo: Ufo): Marker {

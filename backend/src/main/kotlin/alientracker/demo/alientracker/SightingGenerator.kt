@@ -1,9 +1,11 @@
 package alientracker.demo.alientracker
 
 import alientracker.demo.api.Ufo
+import io.reactivex.BackpressureOverflowStrategy
 import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.Observable
+import io.reactivex.functions.Action
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 import org.slf4j.LoggerFactory
@@ -17,6 +19,8 @@ import java.util.concurrent.TimeUnit
  */
 @Component
 class SightingGenerator : Sighting {
+    private val LOG = LoggerFactory.getLogger(this.javaClass.name)
+
     private var shipCount = 100
     private val source = PublishSubject.create<Ufo>()
     private val ships = mutableSetOf<Ufo>()
@@ -27,16 +31,21 @@ class SightingGenerator : Sighting {
     init {
         generateUfos()
         iterator = ships.iterator()
+        setSpeed(1)
         createIntervalWithVariableTimer()
     }
 
 
     override fun sightings(): Flowable<Ufo> {
-        return source.toFlowable(BackpressureStrategy.DROP)
+        return source.toFlowable(BackpressureStrategy.DROP).onBackpressureBuffer(100, {
+            LOG.info("Dropping due to backpressure")
+        }, BackpressureOverflowStrategy.DROP_OLDEST)
     }
 
-    override fun setSpeed(sightingsPerSecond: Int) {
-        generationSpeed = 1000/(sightingsPerSecond.toLong())
+    final override fun setSpeed(sightingsPerSecond: Int) {
+        if (sightingsPerSecond > 0) {
+            generationSpeed = 1000 / (sightingsPerSecond).toLong()
+        }
     }
 
     private fun nextUfo(): Ufo {
