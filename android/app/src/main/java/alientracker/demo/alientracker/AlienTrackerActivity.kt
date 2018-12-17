@@ -170,6 +170,4 @@ class AlienTrackerActivity : AppCompatActivity(), OnMapReadyCallback {
                 .icon(BitmapDescriptorFactory.fromBitmap(destroyer))
         )
     }
-
-
 }

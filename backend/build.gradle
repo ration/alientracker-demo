@@ -32,8 +32,8 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	testImplementation('org.springframework.boot:spring-boot-starter-test')
-	compile 'io.rsocket.kotlin:rsocket-core:0.9-SNAPSHOT'
-	compile 'io.rsocket.kotlin:rsocket-transport-netty:0.9-SNAPSHOT'
+	compile 'io.rsocket.kotlin:rsocket-core:0.9.7-SNAPSHOT'
+	compile 'io.rsocket.kotlin:rsocket-transport-netty:0.9.7-SNAPSHOT'
 	implementation "io.reactivex.rxjava2:rxjava:2.2.4"
 
 }
